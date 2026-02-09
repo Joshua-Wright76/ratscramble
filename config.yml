@@ -1,0 +1,24 @@
+aws_profile: default
+region: us-west-2
+model_id: global.anthropic.claude-haiku-4-5-20251001-v1:0
+agent_models:
+  Carmichael: global.anthropic.claude-sonnet-4-5-20250929-v1:0
+  # Quincy: global.anthropic.claude-haiku-4-5-20251001-v1:0
+  # Medici: global.anthropic.claude-haiku-4-5-20251001-v1:0
+  # D'Ambrosio: global.anthropic.claude-haiku-4-5-20251001-v1:0
+  # Referee: global.anthropic.claude-haiku-4-5-20251001-v1:0
+max_rounds: 10
+win_threshold: 15
+seed: 42
+temperature: 0.6
+max_tokens: 450
+negotiation_word_cap: 200
+round_timeout_seconds: 600
+negotiation_deadlock_seconds: 20
+no_action_cooldown_base_seconds: 0.25
+no_action_cooldown_max_seconds: 2.0
+request_retries: 2
+request_retry_backoff_seconds: [1.0, 2.0]
+llm_request_timeout_seconds: 45
+log_root: logs
+e2e_rounds: 3
