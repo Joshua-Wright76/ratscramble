@@ -17,25 +17,25 @@ def _seq(code: str) -> tuple[Season, ...]:
 
 PROPOSAL_CARDS: tuple[ProposalCard, ...] = (
     ProposalCard("Winter Solstice", _seq("WWP"), _seq("WWWW")),
-    ProposalCard("Winter Awake", _seq("WWP"), _seq("WPSS")),
+    ProposalCard("Winter Awake", _seq("WPP"), _seq("WSSA")),
     ProposalCard("Winter in Chorus", _seq("WPS"), _seq("WWWA")),
     ProposalCard("Winter All-Aglow", _seq("WWW"), _seq("PPAA")),
-    ProposalCard("Winter in Harmony", _seq("WPS"), _seq("WWPP")),
+    ProposalCard("Winter in Harmony", _seq("WWP"), _seq("PPWW")),
     ProposalCard("Spring Equinox", _seq("PPS"), _seq("PPPP")),
-    ProposalCard("Spring-At-The-Door", _seq("PPS"), _seq("PSWW")),
+    ProposalCard("Spring-At-The-Door", _seq("PSS"), _seq("PAAW")),
     ProposalCard("Spring In Quiet", _seq("PPP"), _seq("SSWW")),
-    ProposalCard("Spring Overflowing", _seq("PSA"), _seq("PPSS")),
+    ProposalCard("Spring Overflowing", _seq("PPS"), _seq("SSPP")),
     ProposalCard("Spring In Bloom", _seq("PSA"), _seq("PPPW")),
     ProposalCard("Autumn Equinox", _seq("AAW"), _seq("AAAA")),
     ProposalCard("Autumn In Flight", _seq("AAA"), _seq("WWPP")),
-    ProposalCard("Autumn In Memory", _seq("AWP"), _seq("AAWW")),
-    ProposalCard("Autumn In Mourning", _seq("AAW"), _seq("AWPP")),
+    ProposalCard("Autumn In Memory", _seq("AAW"), _seq("WWAA")),
+    ProposalCard("Autumn In Mourning", _seq("AWW"), _seq("APPS")),
     ProposalCard("Autumn In Vain", _seq("AWP"), _seq("AAAW")),
     ProposalCard("Summer Solstice", _seq("SSA"), _seq("SSSS")),
-    ProposalCard("Summer Singing", _seq("SAW"), _seq("SSAA")),
+    ProposalCard("Summer Singing", _seq("SSA"), _seq("AASS")),
     ProposalCard("Summer Bursting", _seq("SSS"), _seq("AAPP")),
     ProposalCard("Summer Waking", _seq("SAW"), _seq("SSSP")),
-    ProposalCard("Summer in Glory", _seq("SSA"), _seq("SAWW")),
+    ProposalCard("Summer in Glory", _seq("SAA"), _seq("SWWP")),
 )
 
 

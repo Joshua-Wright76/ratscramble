@@ -42,4 +42,18 @@ def _normalize_config_values(data: dict[str, Any]) -> dict[str, Any]:
             values["agent_models"] = normalized_models
         else:
             raise ValueError("config.yml field 'agent_models' must be a mapping of agent name to model ID")
+
+    if "strategy_doc_players" in values:
+        raw_players = values["strategy_doc_players"]
+        if raw_players is None:
+            values["strategy_doc_players"] = []
+        elif isinstance(raw_players, list):
+            normalized_players: list[str] = []
+            for player in raw_players:
+                name = str(player).strip()
+                if name:
+                    normalized_players.append(name)
+            values["strategy_doc_players"] = normalized_players
+        else:
+            raise ValueError("config.yml field 'strategy_doc_players' must be a list of player names")
     return values

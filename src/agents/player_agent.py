@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from src.agents.base_agent import BaseAgent
@@ -14,6 +15,20 @@ CHARACTER_PERSONAS = {
     Character.MEDICI: "You are Medici (red cat), prioritize Summer strongly, Autumn moderately, avoid Winter.",
     Character.DAMBROSIO: "You are D'Ambrosio (blue long-haired strategist), prioritize Spring strongly, Summer moderately, avoid Autumn.",
 }
+
+
+def _load_strategy_brief() -> str:
+    strategy_path = Path(__file__).resolve().parents[2] / "STRATEGY.md"
+    try:
+        text = strategy_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    if not text:
+        return ""
+    return f"\n\nStrategic guidance:\n{text}"
+
+
+STRATEGY_BRIEF = _load_strategy_brief()
 
 
 NEGOTIATION_TOOLS: list[dict[str, Any]] = [
@@ -156,6 +171,7 @@ VOTE_CHANGE_TOOLS: list[dict[str, Any]] = [
 class PlayerAgent(BaseAgent):
     character: Character
     negotiation_word_cap: int = 500
+    use_strategy_doc: bool = True
 
     async def negotiation_action(self, state: dict[str, Any], transcript_tail: list[str], scratchpad: str) -> dict[str, Any]:
         system_prompt = self._system_prompt()
@@ -374,11 +390,13 @@ Use exactly one tool call now.
         return data
 
     def _system_prompt(self) -> str:
+        strategy_block = STRATEGY_BRIEF if self.use_strategy_doc else ""
         return (
             "You are a game-playing AI in Rat Scramble. "
             f"{CHARACTER_PERSONAS[self.character]} "
             "Use tools for actions. Keep messages concise and strategic. "
             "The referee can override actions that violate binding contracts."
+            f"{strategy_block}"
         )
 
     def _sanitize_text(self, text: str) -> str:

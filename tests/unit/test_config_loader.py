@@ -18,6 +18,7 @@ request_retry_backoff_seconds: [0.5, 1.5]
 agent_models:
   Carmichael: model-sonnet
   Referee: model-haiku
+strategy_doc_players: [Carmichael, Quincy]
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -32,3 +33,4 @@ agent_models:
     assert cfg.temperature == 0.55
     assert cfg.request_retry_backoff_seconds == (0.5, 1.5)
     assert cfg.agent_models == {"Carmichael": "model-sonnet", "Referee": "model-haiku"}
+    assert cfg.strategy_doc_players == ["Carmichael", "Quincy"]

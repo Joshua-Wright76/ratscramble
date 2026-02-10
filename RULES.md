@@ -89,10 +89,10 @@ D = previous season (season after "opposite" season)
 Max Proposal: AAA / AAAB
 Spread Proposal: ABC / AAAD
 Wild Proposal: AAA / BBDD
-Split Proposal: ABC / AABB
-Skew Proposal: AAB / ABCC
+Rivalry Proposal: AAB / BBAA
+Upset Proposal: ABB / ACCD
 
-Each of the proposals listed below are in the same order, Max, Spread, Wild, Split, Skew.
+Each of the proposals listed below are in the same order, Max, Spread, Wild, Rivalry, Upset.
 
 ### Winter Proposals
 | Proposal | Majority | Consensus |
@@ -100,8 +100,8 @@ Each of the proposals listed below are in the same order, Max, Spread, Wild, Spl
 | Winter Solstice | WWP | WWWW 
 | Winter in Chorus | WPS | WWWA
 | Winter All-Aglow | WWW | PPAA
-| Winter in Harmony | WPS | WWPP
-| Winter Awake | WWP | WPSS
+| Winter in Harmony | WWP | PPWW
+| Winter Awake | WPP | WSSA
 
 ### Spring Proposals
 | Proposal | Majority | Consensus |
@@ -109,8 +109,8 @@ Each of the proposals listed below are in the same order, Max, Spread, Wild, Spl
 | Spring Equinox | PPS | PPPP |
 | Spring In Bloom | PSA | PPPW |
 | Spring In Quiet | PPP | SSWW |
-| Spring Overflowing | PSA | PPSS |
-| Spring-At-The-Door | PPS | PSAA |
+| Spring Overflowing | PPS | SSPP |
+| Spring-At-The-Door | PSS | PAAW |
 
 ### Autumn Proposals
 | Proposal | Majority | Consensus |
@@ -118,8 +118,8 @@ Each of the proposals listed below are in the same order, Max, Spread, Wild, Spl
 | Autumn Equinox | AAW | AAAA |
 | Autumn In Vain | AWP | AAAW |
 | Autumn In Flight | AAA | WWPP |
-| Autumn In Memory | AWP | AAWW |
-| Autumn In Mourning | AAW | AWPP |
+| Autumn In Memory | AAW | WWAA |
+| Autumn In Mourning | AWW | APPS |
 
 ### Summer Proposals
 | Proposal | Majority | Consensus |
@@ -127,8 +127,8 @@ Each of the proposals listed below are in the same order, Max, Spread, Wild, Spl
 | Summer Solstice | SSA | SSSS |
 | Summer Waking | SAW | SSSP |
 | Summer Bursting | SSS | AAPP |
-| Summer Singing | SAW | SSAA |
-| Summer in Glory | SSA | SAWW |
+| Summer Singing | SSA | AASS |
+| Summer in Glory | SAA | SWWP |
 
 ## Effect Cards
 

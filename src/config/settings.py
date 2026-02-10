@@ -24,3 +24,4 @@ class SimulationConfig:
     log_root: str = "logs"
     e2e_rounds: int = 3
     agent_models: dict[str, str] = field(default_factory=dict)
+    strategy_doc_players: list[str] = field(default_factory=lambda: ["Carmichael", "Quincy", "Medici", "D'Ambrosio"])

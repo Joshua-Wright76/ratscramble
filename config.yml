@@ -1,18 +1,22 @@
 aws_profile: default
 region: us-west-2
-model_id: global.anthropic.claude-haiku-4-5-20251001-v1:0
+model_id: global.anthropic.claude-sonnet-4-5-20250929-v1:0
 agent_models:
-  Carmichael: global.anthropic.claude-sonnet-4-5-20250929-v1:0
+  # Carmichael: global.anthropic.claude-sonnet-4-5-20250929-v1:0
   # Quincy: global.anthropic.claude-haiku-4-5-20251001-v1:0
   # Medici: global.anthropic.claude-haiku-4-5-20251001-v1:0
   # D'Ambrosio: global.anthropic.claude-haiku-4-5-20251001-v1:0
   # Referee: global.anthropic.claude-haiku-4-5-20251001-v1:0
+strategy_doc_players:
+  - Carmichael
+# Example subset test:
+# strategy_doc_players: [Carmichael, Quincy]
 max_rounds: 10
 win_threshold: 15
 seed: 42
 temperature: 0.6
 max_tokens: 450
-negotiation_word_cap: 200
+negotiation_word_cap: 500
 round_timeout_seconds: 600
 negotiation_deadlock_seconds: 20
 no_action_cooldown_base_seconds: 0.25

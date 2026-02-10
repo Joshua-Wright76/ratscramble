@@ -136,6 +136,17 @@ def test_legal_negotiation_tokens_from_state() -> None:
     assert agent._legal_negotiation_tokens({"token_assignments": {"3": "Carmichael"}}) == []
 
 
+def test_system_prompt_can_disable_strategy_doc() -> None:
+    agent = PlayerAgent(
+        name="Carmichael",
+        llm=FakeLLM(_result([])),
+        character=Character.CARMICHAEL,
+        use_strategy_doc=False,
+    )
+
+    assert "Strategic guidance:" not in agent._system_prompt()
+
+
 @pytest.mark.asyncio
 async def test_negotiation_prompt_uses_configured_word_cap() -> None:
     agent = PlayerAgent(

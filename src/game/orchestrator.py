@@ -30,12 +30,14 @@ class SimulationOrchestrator:
         self.engine = RulesEngine(config)
         self._llm_clients_by_model: dict[str, BedrockConverseClient] = {}
         self.llm = self._client_for_model(config.model_id)
+        strategy_players = {name.strip() for name in config.strategy_doc_players}
         self.player_agents = {
             character: PlayerAgent(
                 name=character.value,
                 llm=self._client_for_model(self._model_for_actor(character.value)),
                 character=character,
                 negotiation_word_cap=config.negotiation_word_cap,
+                use_strategy_doc=character.value in strategy_players,
             )
             for character in CHARACTER_ORDER
         }
