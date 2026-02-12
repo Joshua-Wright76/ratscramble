@@ -15,6 +15,7 @@ class RefereeAgent(BaseAgent):
         state: dict[str, Any],
         transcript_tail: list[str],
         contracts: dict[str, Any],
+        scratchpad: str,
     ) -> dict[str, Any]:
         system_prompt = (
             "You are the authoritative referee for Rat Scramble. "
@@ -39,6 +40,9 @@ Recent transcript:
 Existing contracts:
 {contracts}
 
+Your private scratchpad (persist this across phase changes):
+{scratchpad}
+
 Return plain text only, one ruling per line.
 Guidance:
 - Call out binding commitments you infer.
@@ -48,10 +52,12 @@ Guidance:
 """.strip()
         result = await self.llm.converse(system_prompt, user_prompt)
         rulings = self._split_rulings(result.text)
+        next_scratchpad = self._next_scratchpad(scratchpad, rulings)
         data: dict[str, Any] = {"rulings": rulings}
         if not rulings and result.text.strip():
             data["rulings"] = [result.text.strip()[:500]]
             data["_parse_warning"] = "fallback_from_plaintext"
+        data["scratchpad"] = next_scratchpad
         data["_prompt"] = {"system": system_prompt, "user": user_prompt}
         data["_raw_text"] = result.text
         data["_raw_response"] = result.raw_response
@@ -70,3 +76,10 @@ Guidance:
             if line:
                 lines.append(line[:500])
         return lines
+
+    def _next_scratchpad(self, scratchpad: str, rulings: list[str]) -> str:
+        if not rulings:
+            return scratchpad
+        update = "\n".join(f"Ruling: {line}" for line in rulings)
+        combined = f"{scratchpad}\n{update}".strip()
+        return combined[-4000:]

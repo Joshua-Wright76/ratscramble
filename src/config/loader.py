@@ -56,4 +56,7 @@ def _normalize_config_values(data: dict[str, Any]) -> dict[str, Any]:
             values["strategy_doc_players"] = normalized_players
         else:
             raise ValueError("config.yml field 'strategy_doc_players' must be a list of player names")
+
+    if "strategy_doc_enabled" in values:
+        values["strategy_doc_enabled"] = bool(values["strategy_doc_enabled"])
     return values

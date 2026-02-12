@@ -16,6 +16,15 @@ CHARACTER_PERSONAS = {
     Character.DAMBROSIO: "You are D'Ambrosio (blue long-haired strategist), prioritize Spring strongly, Summer moderately, avoid Autumn.",
 }
 
+INTERESTS_BRIEF = (
+    "Known character interests (public, common knowledge):\n"
+    "- Carmichael: +2 Winter, +1 Spring, -1 Summer\n"
+    "- Quincy: +2 Autumn, +1 Winter, -1 Spring\n"
+    "- Medici: +2 Summer, +1 Autumn, -1 Winter\n"
+    "- D'Ambrosio: +2 Spring, +1 Summer, -1 Autumn\n"
+    "Assume all players already know this. Do not spend Round 1 repeating introductions unless strategically useful."
+)
+
 
 def _load_strategy_brief() -> str:
     strategy_path = Path(__file__).resolve().parents[2] / "STRATEGY.md"
@@ -41,6 +50,7 @@ NEGOTIATION_TOOLS: list[dict[str, Any]] = [
                     "type": "object",
                     "properties": {
                         "message": {"type": "string"},
+                        "private_note": {"type": "string"},
                     },
                     "required": ["message"],
                 }
@@ -57,6 +67,7 @@ NEGOTIATION_TOOLS: list[dict[str, Any]] = [
                     "properties": {
                         "token": {"type": "integer", "enum": [1, 2, 3, 4]},
                         "message": {"type": "string"},
+                        "private_note": {"type": "string"},
                     },
                     "required": ["token"],
                 }
@@ -72,6 +83,7 @@ NEGOTIATION_TOOLS: list[dict[str, Any]] = [
                     "type": "object",
                     "properties": {
                         "reason": {"type": "string"},
+                        "private_note": {"type": "string"},
                     },
                     "required": [],
                 }
@@ -92,6 +104,7 @@ VOTING_TOOLS: list[dict[str, Any]] = [
                     "properties": {
                         "proposal_index": {"type": "integer", "enum": [0, 1]},
                         "message": {"type": "string"},
+                        "private_note": {"type": "string"},
                     },
                     "required": ["proposal_index"],
                 }
@@ -107,6 +120,7 @@ VOTING_TOOLS: list[dict[str, Any]] = [
                     "type": "object",
                     "properties": {
                         "reason": {"type": "string"},
+                        "private_note": {"type": "string"},
                     },
                     "required": [],
                 }
@@ -127,6 +141,7 @@ VOTE_CHANGE_TOOLS: list[dict[str, Any]] = [
                     "properties": {
                         "new_vote": {"type": "integer", "enum": [0, 1]},
                         "message": {"type": "string"},
+                        "private_note": {"type": "string"},
                     },
                     "required": ["new_vote"],
                 }
@@ -143,6 +158,7 @@ VOTE_CHANGE_TOOLS: list[dict[str, Any]] = [
                     "properties": {
                         "new_vote": {"type": "integer", "enum": [0, 1]},
                         "message": {"type": "string"},
+                        "private_note": {"type": "string"},
                     },
                     "required": ["new_vote"],
                 }
@@ -158,6 +174,7 @@ VOTE_CHANGE_TOOLS: list[dict[str, Any]] = [
                     "type": "object",
                     "properties": {
                         "reason": {"type": "string"},
+                        "private_note": {"type": "string"},
                     },
                     "required": [],
                 }
@@ -195,6 +212,7 @@ Rules reminders:
 - Vote token 3 must be taken first.
 - Your legal vote-token options right now: {legal_tokens if legal_tokens else "none"}.
 - If no legal vote token is available, do not call take_vote_token.
+- Use the optional private_note field in your tool input for private planning memory; private_note is never public.
 """.strip()
         result = await self.llm.converse_with_tools(
             system_prompt,
@@ -209,13 +227,14 @@ Rules reminders:
             data = {
                 "utterance": utterance,
                 "attempt_take_token": None,
-                "scratchpad": self._next_scratchpad(scratchpad, utterance),
+                "scratchpad": scratchpad,
                 "_parse_warning": "no_tool_call_returned",
                 "_control_action": "fallback_text",
             }
         else:
             name = tool["name"]
             payload = tool["input"] if isinstance(tool["input"], dict) else {}
+            private_note = self._extract_private_note(payload)
             if name == "take_vote_token":
                 token = payload.get("token")
                 attempt = int(token) if isinstance(token, int) else None
@@ -223,7 +242,7 @@ Rules reminders:
                 data = {
                     "utterance": utterance,
                     "attempt_take_token": attempt,
-                    "scratchpad": self._next_scratchpad(scratchpad, utterance),
+                    "scratchpad": self._next_scratchpad(scratchpad, private_note),
                     "_control_action": "take_vote_token",
                 }
             elif name == "say_public":
@@ -232,7 +251,7 @@ Rules reminders:
                 data = {
                     "utterance": utterance,
                     "attempt_take_token": inferred_attempt,
-                    "scratchpad": self._next_scratchpad(scratchpad, utterance),
+                    "scratchpad": self._next_scratchpad(scratchpad, private_note),
                     "_control_action": "say_public",
                 }
             else:
@@ -240,7 +259,7 @@ Rules reminders:
                 data = {
                     "utterance": "",
                     "attempt_take_token": None,
-                    "scratchpad": self._next_scratchpad(scratchpad, ""),
+                    "scratchpad": self._next_scratchpad(scratchpad, private_note),
                     "_control_action": "no_action",
                     "_control_reason": reason,
                 }
@@ -272,6 +291,7 @@ Your private scratchpad:
 
 You hold vote token {token_number}. Voting order is 1,2,3,4.
 Use exactly one tool call now.
+Use the optional private_note field in your tool input for private planning memory; private_note is never public.
 """.strip()
         result = await self.llm.converse_with_tools(
             system_prompt,
@@ -286,12 +306,13 @@ Use exactly one tool call now.
             data = {
                 "utterance": utterance,
                 "vote": 0,
-                "scratchpad": self._next_scratchpad(scratchpad, utterance),
+                "scratchpad": scratchpad,
                 "_parse_warning": "no_tool_call_returned",
                 "_control_action": "fallback_text",
             }
         else:
             payload = tool["input"] if isinstance(tool["input"], dict) else {}
+            private_note = self._extract_private_note(payload)
             if tool["name"] == "cast_vote":
                 proposal = payload.get("proposal_index")
                 vote = int(proposal) if isinstance(proposal, int) and proposal in (0, 1) else 0
@@ -299,7 +320,7 @@ Use exactly one tool call now.
                 data = {
                     "utterance": utterance,
                     "vote": vote,
-                    "scratchpad": self._next_scratchpad(scratchpad, utterance),
+                    "scratchpad": self._next_scratchpad(scratchpad, private_note),
                     "_control_action": "cast_vote",
                 }
             else:
@@ -307,7 +328,7 @@ Use exactly one tool call now.
                 data = {
                     "utterance": "",
                     "vote": 0,
-                    "scratchpad": self._next_scratchpad(scratchpad, ""),
+                    "scratchpad": self._next_scratchpad(scratchpad, private_note),
                     "_control_action": "no_action",
                     "_control_reason": reason,
                 }
@@ -339,6 +360,7 @@ Your private scratchpad:
 
 A vote-change window is open for target voter: {target_player.value}.
 Use exactly one tool call now.
+Use the optional private_note field in your tool input for private planning memory; private_note is never public.
 """.strip()
         result = await self.llm.converse_with_tools(
             system_prompt,
@@ -354,12 +376,13 @@ Use exactly one tool call now.
                 "utterance": utterance,
                 "action": "none",
                 "new_vote": None,
-                "scratchpad": self._next_scratchpad(scratchpad, utterance),
+                "scratchpad": scratchpad,
                 "_parse_warning": "no_tool_call_returned",
                 "_control_action": "fallback_text",
             }
         else:
             payload = tool["input"] if isinstance(tool["input"], dict) else {}
+            private_note = self._extract_private_note(payload)
             if tool["name"] in {"use_target_token", "force_with_three_tokens"}:
                 new_vote = payload.get("new_vote")
                 vote = int(new_vote) if isinstance(new_vote, int) and new_vote in (0, 1) else None
@@ -368,7 +391,7 @@ Use exactly one tool call now.
                     "utterance": utterance,
                     "action": tool["name"],
                     "new_vote": vote,
-                    "scratchpad": self._next_scratchpad(scratchpad, utterance),
+                    "scratchpad": self._next_scratchpad(scratchpad, private_note),
                     "_control_action": tool["name"],
                 }
             else:
@@ -377,7 +400,7 @@ Use exactly one tool call now.
                     "utterance": "",
                     "action": "none",
                     "new_vote": None,
-                    "scratchpad": self._next_scratchpad(scratchpad, ""),
+                    "scratchpad": self._next_scratchpad(scratchpad, private_note),
                     "_control_action": "no_action",
                     "_control_reason": reason,
                 }
@@ -396,11 +419,15 @@ Use exactly one tool call now.
             f"{CHARACTER_PERSONAS[self.character]} "
             "Use tools for actions. Keep messages concise and strategic. "
             "The referee can override actions that violate binding contracts."
+            f"\n\n{INTERESTS_BRIEF}"
             f"{strategy_block}"
         )
 
     def _sanitize_text(self, text: str) -> str:
         return " ".join((text or "").strip().split())[:500]
+
+    def _extract_private_note(self, payload: dict[str, Any]) -> str:
+        return self._sanitize_text(str(payload.get("private_note", "")))
 
     def _first_tool_call(self, tool_calls: list[dict[str, Any]]) -> dict[str, Any] | None:
         if not tool_calls:
@@ -437,9 +464,9 @@ Use exactly one tool call now.
             return [3]
         return [token for token in (4, 2, 1) if token not in assigned_tokens]
 
-    def _next_scratchpad(self, scratchpad: str, utterance: str) -> str:
-        if not utterance:
+    def _next_scratchpad(self, scratchpad: str, private_note: str) -> str:
+        if not private_note:
             return scratchpad
-        update = f"Public message: {utterance}"
+        update = f"Private note: {private_note}"
         combined = f"{scratchpad}\n{update}".strip()
         return combined[-4000:]

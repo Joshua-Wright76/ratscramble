@@ -30,7 +30,9 @@ class SimulationOrchestrator:
         self.engine = RulesEngine(config)
         self._llm_clients_by_model: dict[str, BedrockConverseClient] = {}
         self.llm = self._client_for_model(config.model_id)
-        strategy_players = {name.strip() for name in config.strategy_doc_players}
+        strategy_players = set()
+        if config.strategy_doc_enabled:
+            strategy_players = {name.strip() for name in config.strategy_doc_players}
         self.player_agents = {
             character: PlayerAgent(
                 name=character.value,
@@ -42,6 +44,7 @@ class SimulationOrchestrator:
             for character in CHARACTER_ORDER
         }
         self.referee = RefereeAgent(name="Referee", llm=self._client_for_model(self._model_for_actor("Referee")))
+        self._referee_scratchpad = ""
         self.game_id = str(uuid.uuid4())[:8]
         self.logger = GameLogger(root=config.log_root, game_id=self.game_id)
         self.display = GameDisplay()
@@ -275,6 +278,8 @@ class SimulationOrchestrator:
                     )
                 else:
                     delay = 0.05
+                if self.visual:
+                    delay = max(delay, max(0.0, self.config.visual_step_delay_seconds))
                 await asyncio.sleep(delay)
 
         tasks = [asyncio.create_task(loop_player(character)) for character in CHARACTER_ORDER]
@@ -403,6 +408,7 @@ class SimulationOrchestrator:
             self._record_event("vote_cast", {"character": player.value, "token": token, "vote": vote})
             self.display.add_event(f"{player.value} voted for proposal {vote}")
             self._refresh_state()
+            await self._maybe_visual_delay()
 
             if self._round_timed_out():
                 self._record_event("round_timeout", {"phase": "voting", "action": "skip_vote_change_window"})
@@ -492,6 +498,7 @@ class SimulationOrchestrator:
                 self.display.add_event(f"{actor.value} changed {target.value}'s vote")
                 self._record_promise_transfer_event(actor, target, action, int(new_vote), ts)
             self._refresh_state()
+            await self._maybe_visual_delay()
 
     async def _referee_phase_change(self, from_phase: str, to_phase: str) -> None:
         state = self.engine.export_public_state()
@@ -499,13 +506,24 @@ class SimulationOrchestrator:
         contracts = state.get("contracts", {})
         self.display.add_event(f"Referee reviewing: {from_phase} -> {to_phase}")
         self._refresh_state()
+        referee_scratchpad_before = self._referee_scratchpad
         try:
             result = await asyncio.wait_for(
-                self.referee.evaluate_phase_change(from_phase, to_phase, state, transcript_tail, contracts),
+                self.referee.evaluate_phase_change(
+                    from_phase,
+                    to_phase,
+                    state,
+                    transcript_tail,
+                    contracts,
+                    self._referee_scratchpad,
+                ),
                 timeout=self.config.llm_request_timeout_seconds,
             )
-            self._log_llm_exchange("referee", None, result, None)
+            self._log_llm_exchange("referee", None, result, referee_scratchpad_before)
             self._record_parse_warning("referee", "Referee", f"{from_phase}->{to_phase}", result)
+            new_scratchpad = result.get("scratchpad")
+            if isinstance(new_scratchpad, str):
+                self._referee_scratchpad = new_scratchpad
         except asyncio.TimeoutError:
             self._record_event(
                 "referee_timeout",
@@ -773,6 +791,10 @@ class SimulationOrchestrator:
 
     def _refresh_state(self) -> None:
         state = self.engine.export_public_state()
+        state["scratchpads_view"] = {
+            character.value: self.engine.state.scratchpads.get(character, "")
+            for character in CHARACTER_ORDER
+        } | {"Referee": self._referee_scratchpad}
         state["llm_usage"] = self._usage_snapshot()
         self.display.set_state(state)
         if self._live is not None:
@@ -798,6 +820,11 @@ class SimulationOrchestrator:
             },
         )
         self.display.add_event(f"{actor} response parsed with fallback in {phase}")
+
+    async def _maybe_visual_delay(self) -> None:
+        delay = max(0.0, self.config.visual_step_delay_seconds)
+        if self.visual and delay > 0:
+            await asyncio.sleep(delay)
 
     def _record_promise_transfer_event(
         self,

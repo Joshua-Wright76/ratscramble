@@ -18,10 +18,12 @@ class SimulationConfig:
     negotiation_deadlock_seconds: int = 20
     no_action_cooldown_base_seconds: float = 0.25
     no_action_cooldown_max_seconds: float = 2.0
+    visual_step_delay_seconds: float = 0.0
     request_retries: int = 2
     request_retry_backoff_seconds: tuple[float, float] = (1.0, 2.0)
     llm_request_timeout_seconds: int = 45
     log_root: str = "logs"
     e2e_rounds: int = 3
     agent_models: dict[str, str] = field(default_factory=dict)
+    strategy_doc_enabled: bool = True
     strategy_doc_players: list[str] = field(default_factory=lambda: ["Carmichael", "Quincy", "Medici", "D'Ambrosio"])

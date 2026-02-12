@@ -147,6 +147,22 @@ def test_system_prompt_can_disable_strategy_doc() -> None:
     assert "Strategic guidance:" not in agent._system_prompt()
 
 
+def test_system_prompt_includes_all_character_interests() -> None:
+    agent = PlayerAgent(
+        name="Quincy",
+        llm=FakeLLM(_result([])),
+        character=Character.QUINCY,
+        use_strategy_doc=False,
+    )
+
+    prompt = agent._system_prompt()
+    assert "Known character interests" in prompt
+    assert "Carmichael: +2 Winter, +1 Spring, -1 Summer" in prompt
+    assert "Quincy: +2 Autumn, +1 Winter, -1 Spring" in prompt
+    assert "Medici: +2 Summer, +1 Autumn, -1 Winter" in prompt
+    assert "D'Ambrosio: +2 Spring, +1 Summer, -1 Autumn" in prompt
+
+
 @pytest.mark.asyncio
 async def test_negotiation_prompt_uses_configured_word_cap() -> None:
     agent = PlayerAgent(
@@ -170,3 +186,32 @@ async def test_negotiation_prompt_uses_configured_word_cap() -> None:
     prompt_text = action["_prompt"]["user"]
 
     assert "321-word cap" in prompt_text
+
+
+@pytest.mark.asyncio
+async def test_private_note_updates_scratchpad_not_public_message() -> None:
+    agent = PlayerAgent(
+        name="Medici",
+        llm=FakeLLM(
+            _result(
+                [
+                    {
+                        "name": "say_public",
+                        "input": {
+                            "message": "I support proposal 0.",
+                            "private_note": "Quincy likely flips late; keep 3 tokens.",
+                        },
+                        "tool_use_id": "pn",
+                    }
+                ]
+            )
+        ),
+        character=Character.MEDICI,
+    )
+
+    action = await agent.negotiation_action(state={}, transcript_tail=[], scratchpad="")
+
+    assert action["utterance"] == "I support proposal 0."
+    assert "Private note:" in action["scratchpad"]
+    assert "Quincy likely flips late" in action["scratchpad"]
+    assert "I support proposal 0." not in action["scratchpad"]
