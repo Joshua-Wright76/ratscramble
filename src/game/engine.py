@@ -48,6 +48,7 @@ class RulesEngine:
             holder: {owner: (5 if holder == owner else 0) for owner in CHARACTER_ORDER}
             for holder in CHARACTER_ORDER
         }
+        state.spendable_holdings = self._copy_holdings(state.holdings)
         state.scratchpads = {c: "" for c in CHARACTER_ORDER}
         state.metadata = {
             "seed": self.config.seed,
@@ -78,7 +79,16 @@ class RulesEngine:
         self.state.vote_changes = {c: 0 for c in CHARACTER_ORDER}
         self.state.word_counts = {c: 0 for c in CHARACTER_ORDER}
         self.state.muted_players = set()
+        self.state.spendable_holdings = self._copy_holdings(self.state.holdings)
         self.state.metadata["round_started_at"] = time.time()
+
+    def _copy_holdings(
+        self, holdings: dict[Character, dict[Character, int]]
+    ) -> dict[Character, dict[Character, int]]:
+        return {
+            holder: {owner: int(count) for owner, count in owned.items()}
+            for holder, owned in holdings.items()
+        }
 
     def _draw_effect(self) -> EffectCard:
         if not self.state.effect_deck:
@@ -169,8 +179,9 @@ class RulesEngine:
     ) -> bool:
         if not self.can_change_vote(target):
             return False
-        if self.state.holdings[actor][target] <= 0:
+        if self.state.spendable_holdings[actor][target] <= 0:
             return False
+        self.state.spendable_holdings[actor][target] -= 1
         self.state.holdings[actor][target] -= 1
         self.state.holdings[target][target] += 1
         self.state.votes[target] = new_proposal_index
@@ -188,8 +199,9 @@ class RulesEngine:
     ) -> bool:
         if not self.can_change_vote(target):
             return False
-        if self.state.holdings[actor][actor] < 3:
+        if self.state.spendable_holdings[actor][actor] < 3:
             return False
+        self.state.spendable_holdings[actor][actor] -= 3
         self.state.holdings[actor][actor] -= 3
         self.state.holdings[target][actor] += 3
         self.state.votes[target] = new_proposal_index
@@ -364,6 +376,10 @@ class RulesEngine:
             "holdings": {
                 holder.value: {owner.value: count for owner, count in owned.items()}
                 for holder, owned in self.state.holdings.items()
+            },
+            "spendable_holdings": {
+                holder.value: {owner.value: count for owner, count in owned.items()}
+                for holder, owned in self.state.spendable_holdings.items()
             },
             "toggles": sorted(self.state.active_toggles),
             "word_counts": {k.value: v for k, v in self.state.word_counts.items()},

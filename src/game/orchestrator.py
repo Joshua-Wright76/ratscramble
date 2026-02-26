@@ -61,7 +61,11 @@ class SimulationOrchestrator:
         self._usage_by_actor_round = {name: self._new_usage_bucket() for name in self._usage_actor_order}
 
     async def run(self) -> dict[str, Any]:
-        context = Live(self.display.render(), refresh_per_second=8) if self.visual else nullcontext()
+        context = (
+            Live(self.display.render(), refresh_per_second=8, vertical_overflow="crop")
+            if self.visual
+            else nullcontext()
+        )
         if self.visual and isinstance(context, Live):
             self._live = context
         with context:

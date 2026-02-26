@@ -47,8 +47,30 @@ def test_voting_order_and_vote_changes() -> None:
 
     # Quincy holds one Medici token to enable method 1.
     engine.state.holdings[Character.QUINCY][Character.MEDICI] = 1
+    engine.state.spendable_holdings[Character.QUINCY][Character.MEDICI] = 1
     assert engine.change_vote_using_target_token(Character.QUINCY, Character.MEDICI, 0)
     assert engine.state.votes[Character.MEDICI] == 0
+
+
+def test_newly_received_promise_tokens_are_not_spendable_until_next_round() -> None:
+    engine = _engine()
+    engine.take_token(Character.CARMICHAEL, 3)
+    engine.take_token(Character.QUINCY, 1)
+    engine.take_token(Character.MEDICI, 2)
+    engine.take_token(Character.DAMBROSIO, 4)
+    engine.enter_voting_phase()
+
+    assert engine.cast_vote(Character.QUINCY, 0)
+    assert engine.cast_vote(Character.MEDICI, 1)
+    assert engine.cast_vote(Character.CARMICHAEL, 1)
+    assert engine.cast_vote(Character.DAMBROSIO, 1)
+
+    engine.state.holdings[Character.QUINCY][Character.MEDICI] = 1
+    engine.state.spendable_holdings[Character.QUINCY][Character.MEDICI] = 1
+    assert engine.change_vote_using_target_token(Character.QUINCY, Character.MEDICI, 0)
+
+    # Medici received their own token back this round, but it is not spendable until next round.
+    assert not engine.change_vote_using_target_token(Character.MEDICI, Character.QUINCY, 1)
 
 
 def test_shotgun_breaks_tie() -> None:

@@ -90,6 +90,7 @@ class GameState:
     word_counts: dict[Character, int] = field(default_factory=dict)
     muted_players: set[Character] = field(default_factory=set)
     holdings: dict[Character, dict[Character, int]] = field(default_factory=dict)
+    spendable_holdings: dict[Character, dict[Character, int]] = field(default_factory=dict)
     contracts: dict[str, Contract] = field(default_factory=dict)
     active_toggles: set[str] = field(default_factory=set)
     proposal_deck: list[ProposalCard] = field(default_factory=list)

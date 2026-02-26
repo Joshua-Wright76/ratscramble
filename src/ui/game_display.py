@@ -4,9 +4,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from rich.align import Align
-from rich.console import Group
+from rich.columns import Columns
+from rich.console import Console, ConsoleOptions, Group, RenderResult
 from rich.layout import Layout
 from rich.panel import Panel
+from rich import box
+from rich.segment import Segment
 from rich.table import Table
 from rich.text import Text
 
@@ -30,6 +33,20 @@ SENDER_EMOJI: dict[str, str] = {
 }
 TOKEN_DOT = "●"
 EVENT_PREFIX = "__EVENT__::"
+
+
+class _TailViewport:
+    def __init__(self, renderable: Any):
+        self.renderable = renderable
+
+    def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+        lines = console.render_lines(self.renderable, options, pad=False)
+        if options.height is not None and options.height > 0:
+            lines = lines[-options.height :]
+
+        for line in lines:
+            yield from line
+            yield Segment.line()
 
 PROPOSAL_TYPES: dict[str, str] = {
     "Winter Solstice": "max",
@@ -166,23 +183,20 @@ class GameDisplay:
             return "bold bright_cyan"
         return "cyan"
 
-    def _render_chat_view(self) -> Group | Text:
+    def _render_chat_view(self) -> Any:
         lines = self.chat_lines[-self.max_lines :]
         if not lines:
             return Text("No data yet")
 
         chunks: list[Any] = []
-        for index, line in enumerate(lines):
+        for line in lines:
             if line.startswith(EVENT_PREFIX):
                 content = line[len(EVENT_PREFIX) :].strip()
                 event_text = Text(content, style=self._event_style(content))
                 chunks.append(Align.center(event_text))
             else:
                 chunks.append(self._format_sender_line(line))
-
-            if index < len(lines) - 1:
-                chunks.append(Text(""))
-        return Group(*chunks)
+        return _TailViewport(Group(*chunks))
 
     def _state_lines(self) -> list[str]:
         round_number = self.state_snapshot.get("round", "-")
@@ -304,6 +318,111 @@ class GameDisplay:
             legend.append(f" {owner}  ")
         output.append(legend)
         return output
+
+    def _render_state_compact(self) -> Columns:
+        round_number = self.state_snapshot.get("round", "-")
+        phase = str(self.state_snapshot.get("phase", "-")).upper()
+        proposals = self.state_snapshot.get("proposals", [])
+        effects_raw = self.state_snapshot.get("effects", {})
+        effects: dict[int, dict[str, str]] = {}
+        if isinstance(effects_raw, dict):
+            for key, value in effects_raw.items():
+                try:
+                    index = int(key)
+                except Exception:
+                    continue
+                effects[index] = value if isinstance(value, dict) else {}
+
+        votes = self.state_snapshot.get("votes", {}) if isinstance(self.state_snapshot.get("votes", {}), dict) else {}
+        assignments_raw = self.state_snapshot.get("token_assignments", {})
+        assignments: dict[str, int] = {}
+        if isinstance(assignments_raw, dict):
+            for token, player in assignments_raw.items():
+                if isinstance(player, str):
+                    try:
+                        assignments[player] = int(token)
+                    except Exception:
+                        continue
+        vote_changes = self.state_snapshot.get("vote_changes", {}) if isinstance(self.state_snapshot.get("vote_changes", {}), dict) else {}
+        bells = self.state_snapshot.get("bells", {}) if isinstance(self.state_snapshot.get("bells", {}), dict) else {}
+        toggles = self.state_snapshot.get("toggles", []) if isinstance(self.state_snapshot.get("toggles", []), list) else []
+        word_counts = self.state_snapshot.get("word_counts", {}) if isinstance(self.state_snapshot.get("word_counts", {}), dict) else {}
+        holdings = self.state_snapshot.get("holdings", {}) if isinstance(self.state_snapshot.get("holdings", {}), dict) else {}
+
+        overview = Table(show_header=False, box=box.SIMPLE, pad_edge=False)
+        overview.add_column("key", style="bold")
+        overview.add_column("value")
+        overview.add_row("Round", str(round_number))
+        overview.add_row("Phase", phase)
+        overview.add_row("Proposals", str(len(proposals) if isinstance(proposals, list) else 0))
+        overview.add_row("Toggles", ", ".join(str(toggle) for toggle in toggles) if toggles else "None")
+
+        proposal_table = Table(title="Proposals", show_header=True, box=box.SIMPLE, pad_edge=False)
+        proposal_table.add_column("P", style="bold")
+        proposal_table.add_column("Name")
+        proposal_table.add_column("Maj", overflow="fold")
+        proposal_table.add_column("Con", overflow="fold")
+        if isinstance(proposals, list) and proposals:
+            for index, proposal in enumerate(proposals):
+                name = str(proposal)
+                p_type = PROPOSAL_TYPES.get(name, "unknown")
+                majority_pattern, consensus_pattern = PROPOSAL_PATTERNS.get(name, ("---", "----"))
+                effect_info = effects.get(index, {})
+                majority_effect = str(effect_info.get("majority", "-"))
+                consensus_effect = str(effect_info.get("consensus", "-"))
+                proposal_table.add_row(
+                    f"P{index}",
+                    f"{name} [{p_type}]",
+                    f"{majority_pattern} | {majority_effect}",
+                    f"{consensus_pattern} | {consensus_effect}",
+                )
+        else:
+            proposal_table.add_row("-", "No proposals", "-", "-")
+
+        votes_table = Table(title="Votes", show_header=True, box=box.SIMPLE, pad_edge=False)
+        votes_table.add_column("Player")
+        votes_table.add_column("Tok", justify="right")
+        votes_table.add_column("Vote", justify="right")
+        votes_table.add_column("Flips", justify="right")
+        for player in CHARACTER_ORDER:
+            token = assignments.get(player)
+            token_text = str(token) if token is not None else "-"
+            vote_value = votes.get(player)
+            vote_text = f"P{vote_value}" if isinstance(vote_value, int) else "-"
+            flips = int(vote_changes.get(player, 0)) if player in vote_changes else 0
+            votes_table.add_row(self._style_character_names(player), token_text, vote_text, str(flips))
+
+        bells_table = Table(title="Bells", show_header=True, box=box.SIMPLE, pad_edge=False)
+        bells_table.add_column("Season")
+        bells_table.add_column("Count", justify="right")
+        bells_table.add_column("Bar")
+        for season in ("spring", "summer", "autumn", "winter"):
+            value = int(bells.get(season, 0))
+            bells_table.add_row(season.title(), str(value), "#" * max(0, min(value, 14)))
+
+        words_table = Table(title="Word Counts", show_header=True, box=box.SIMPLE, pad_edge=False)
+        words_table.add_column("Player")
+        words_table.add_column("Words", justify="right")
+        for player in CHARACTER_ORDER:
+            words_table.add_row(self._style_character_names(player), str(int(word_counts.get(player, 0))))
+
+        holdings_table = Table(title="Promise Holdings", show_header=True, box=box.SIMPLE, pad_edge=False)
+        holdings_table.add_column("Holder")
+        for owner in CHARACTER_ORDER:
+            holdings_table.add_column(owner, justify="right")
+        for holder in CHARACTER_ORDER:
+            row: list[str | Text] = [self._style_character_names(holder)]
+            owned = holdings.get(holder, {}) if isinstance(holdings, dict) else {}
+            for owner in CHARACTER_ORDER:
+                row.append(str(int(owned.get(owner, 0))))
+            holdings_table.add_row(*row)
+
+        return Columns(
+            [overview, proposal_table, votes_table, bells_table, words_table, holdings_table],
+            expand=True,
+            padding=(0, 2),
+            equal=False,
+        )
 
     def _usage_lines(self) -> list[str]:
         usage = self.state_snapshot.get("llm_usage", {})
@@ -428,23 +547,15 @@ class GameDisplay:
         )
         layout["top"].split_row(
             Layout(name="chat", ratio=3),
-            Layout(name="scratchpads", ratio=2),
-        )
-        layout["bottom"].split_row(
             Layout(name="rulings", ratio=2),
-            Layout(name="state", ratio=4),
-            Layout(name="usage", ratio=2),
         )
+        layout["bottom"].split_row(Layout(name="state", ratio=1))
 
         chat_text = self._render_chat_view()
         rulings_text = self._render_lines_as_text("rulings")
-        state_text = self._render_state_text()
-        usage_text = self._render_lines_as_text("usage")
-        scratchpad_text = self._style_character_names("\n".join(self._scratchpad_lines()) or "No scratchpads yet")
+        state_view = self._render_state_compact()
 
         layout["chat"].update(Panel(chat_text, title="Public Negotiation / Voting Chat"))
-        layout["scratchpads"].update(Panel(scratchpad_text, title="Agent Scratchpads"))
         layout["rulings"].update(Panel(rulings_text, title="Referee Rulings"))
-        layout["state"].update(Panel(state_text, title="Game State"))
-        layout["usage"].update(Panel(usage_text, title="LLM Usage"))
+        layout["state"].update(Panel(state_view, title="Game State"))
         return layout
